@@ -1,0 +1,112 @@
+---
+title: Precisión de remate en la Ligue 1 2018 - 2019
+author: Gustavo Céspedes Ramírez
+output: 
+  prettydoc::html_pretty: 
+    theme: cayman
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F, message = F, fig.align = "center")
+windowsFonts(SegoeUI = windowsFont("Segoe UI"))
+```
+
+```{r}
+library(tidyverse)
+library(ggrepel)
+load("teams_data.Rdata")
+```
+
+***
+
+# Objetivo
+Identificar los jugadores con mayor precisión de remate de la Liga Francesa para aportar al departamento de scouting alternativas con potencial ofensivo. 
+
+# KPIs
+> Porcentaje de remates directos  
+> Número de remates por gol  
+> Minutos jugados  
+
+# Recopilación de datos
+Los datos son recopilados de api-football.com. De la versión gratuita del API, se extraen los datos de rendimiento de los jugadores de la liga francesa y se calculan los indicadores para dar respuesta al problema.
+
+# Porcentaje de remates directos
+
+```{r, fig.width=7.2}
+precisos1 <- teams_data %>% 
+  filter(league == "Ligue 1") %>% 
+  filter(shots_total > 10) %>% 
+  mutate(shots_on_perc = shots_on / shots_total * 100) %>% 
+  top_n(8, shots_on_perc) 
+
+precisos1 %>% 
+  ggplot() + 
+  aes(fct_reorder(player_name, shots_on_perc), shots_on_perc, 
+      fill = shots_on_perc) + 
+  geom_col() + 
+  coord_flip() + 
+  labs(subtitle = "Jugadores con mayor porcentaje de remates directos sobre el total de remates \nSolo jugadores con más de 10 remates realizados", x = "", y = "") + 
+  theme_minimal() + 
+  theme(legend.position = "none", 
+        text = element_text(family = "SegoeUI", size = 14), 
+        plot.subtitle = element_text(hjust = 1), 
+        axis.text = element_text(color = "black"))
+
+```
+
+# Número de remates por gol
+
+```{r}
+precisos2 <- teams_data %>% 
+  filter(league == "Ligue 1") %>% 
+  filter(goals_total > 5 & shots_total > 5) %>% 
+  mutate(shots_per_goal = shots_total / goals_total) %>% 
+  top_n(8, -shots_per_goal)
+
+precisos2 %>% 
+  ggplot() + 
+  aes(fct_reorder(player_name, -shots_per_goal), shots_per_goal, 
+      fill = -shots_per_goal) + 
+  geom_col() + 
+  coord_flip() + 
+  labs(subtitle = "Jugadores con menos remates realizados por gol anotado \nSolo jugadores con más de 5 goles", x = "", y = "") + 
+  theme_minimal() + 
+  theme(legend.position = "none", 
+        text = element_text(family = "SegoeUI", size = 15), 
+        axis.text = element_text(color = "black"))
+
+```
+
+# Remates, goles y minutos jugados
+
+```{r}
+teams_data %>% 
+  filter(league == "Ligue 1") %>% 
+  filter(player_id %in% precisos1$player_id | player_id %in% precisos2$player_id) %>% 
+  mutate(shots_on_perc = shots_on / shots_total * 100, 
+         shots_per_goal = shots_total / goals_total) %>% 
+  ggplot() + 
+  aes(shots_on_perc, shots_per_goal, size = games_minutes_played, label = player_name) + 
+  geom_point(color = "turquoise4", alpha = .7) + 
+  geom_text_repel(family = "SegoeUI", size = 5) + 
+  scale_y_reverse() + 
+  labs(subtitle = "Jugadores destacados en los indicadores anteriores \nSe ajusta el tamaño del punto según la magnitud de minutos jugados", 
+       x = "Porcentaje de remates directos", y = "Número de remates por gol") + 
+  theme_minimal() + 
+  theme(legend.position = "none", 
+        text = element_text(family = "SegoeUI", size = 15))
+
+```
+
+# Conclusiones
+
+El departamento de Scouting de un club debe descubrir alternativas que pasen desapercibidas por el foco popular.  
+Mirar la tabla de goleadores no es suficiente, así que indicadores como los anteriores aportan valor al encontrar jugadores poco conocidos, pero con muy buen rendimiento.  
+Anthony Goncalves y Enzo Crivelli emulan la precisión de remate de jugadores como Cavani o Mbappé y pueden solucionar los problemas de goleo a un precio mucho más accesible.  
+
+
+***
+
+*Documento  elaborado en R markdown.*  
+*Código para recrear el análisis en: https://github.com/Gustavo-CR/rematadores_precisos*  
+*@tavo_cera*
